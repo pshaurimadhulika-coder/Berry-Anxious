@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Berry Anxious</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700;800;900&family=Press+Start+2P&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Baloo 2',cursive;cursor:none;}
+
+/* ── CURSOR ── */
+#cursor{position:fixed;width:16px;height:16px;background:#e8547a;border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s;mix-blend-mode:multiply;}
+#cursor.big{width:44px;height:44px;opacity:.4;}
+
+/* ── INTRO SCENE ── */
+#bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 55% 45%,#ffeef3 0%,#ffc8d8 45%,#ff9db5 100%);animation:bgPulse 5s ease-in-out infinite alternate;}
+@keyframes bgPulse{
+  0%{background:radial-gradient(ellipse at 40% 40%,#ffeef3 0%,#ffc8d8 45%,#ff9db5 100%);}
+  50%{background:radial-gradient(ellipse at 65% 55%,#fff0f5 0%,#ffb8d0 40%,#ff85a8 100%);}
+  100%{background:radial-gradient(ellipse at 50% 35%,#ffe8f0 0%,#ffd0e0 42%,#ff9ab8 100%);}}
+#three-canvas{position:fixed;inset:0;z-index:2;}
+#deco-layer{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+.deco-berry{position:absolute;opacity:0;animation:decoFloat var(--dur) ease-in-out infinite alternate,decoFadeIn 1s var(--del) forwards;filter:drop-shadow(0 4px 10px rgba(180,40,70,.25));transform:rotate(var(--rot));}
+@keyframes decoFadeIn{to{opacity:var(--op);}}
+@keyframes decoFloat{0%{transform:translateY(0) rotate(var(--rot)) scale(1);}100%{transform:translateY(-38px) rotate(calc(var(--rot) + 15deg)) scale(1.10);}}
+#hint{position:fixed;bottom:2.2rem;left:50%;transform:translateX(-50%);color:#e8547a;font-size:.9rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.7;z-index:5;pointer-events:none;transition:opacity .4s;animation:hintPulse 2.8s ease-in-out infinite alternate;}
+@keyframes hintPulse{0%{opacity:.35;transform:translateX(-50%) translateY(0);}100%{opacity:.75;transform:translateX(-50%) translateY(-5px);}}
+#splash-canvas{position:fixed;inset:0;z-index:90;pointer-events:none;}
+
+/* ── GAME WRAPPER — slides in after pop ── */
+#gameWrapper{
+  position:fixed;inset:0;z-index:95;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .55s ease;
+  background:#0d0518;
+  image-rendering:pixelated;image-rendering:crisp-edges;
+}
+#gameWrapper.visible{opacity:1;pointer-events:all;}
+
+/* ── GAME CONTAINER ── */
+#gameContainer{width:960px;height:540px;position:relative;overflow:hidden;image-rendering:pixelated;}
+.screen{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* TITLE */
+#titleScreen{background:linear-gradient(180deg,#1e0a3c 0%,#4a1570 28%,#8b3a8b 52%,#e07840 74%,#f5c518 100%);}
+#titleScreen h1{font-family:'Press Start 2P',monospace;font-size:34px;color:#fff;text-shadow:4px 4px 0 #8b0057,-2px -2px 0 #ff69b4;z-index:10;margin-bottom:8px;animation:titlePulse 2s ease-in-out infinite;}
+#titleScreen .subtitle{font-family:'Press Start 2P',monospace;font-size:9px;color:#ffd1f0;margin-bottom:36px;z-index:10;text-shadow:2px 2px 0 #8b0057;}
+@keyframes titlePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.start-btn{font-family:'Press Start 2P',monospace;font-size:13px;background:#ff4d8f;color:#fff;border:4px solid #fff;padding:14px 28px;cursor:pointer;z-index:10;box-shadow:6px 6px 0 #8b0057;transition:transform .1s,box-shadow .1s;}
+.start-btn:hover{transform:translate(2px,2px);box-shadow:4px 4px 0 #8b0057;}
+.start-btn:active{transform:translate(6px,6px);box-shadow:0 0 0 #8b0057;}
+
+/* BG LAYER */
+#bgLayer{position:absolute;inset:0;overflow:hidden;}
+.sky{position:absolute;inset:0;background:linear-gradient(180deg,#1e0a3c 0%,#4a1570 28%,#8b3a8b 52%,#e07840 74%,#f5c518 100%);}
+.petal{position:absolute;width:6px;height:4px;background:#ffb3d9;border-radius:50% 50% 50% 0;opacity:.8;animation:petalFall linear infinite;}
+@keyframes petalFall{0%{transform:translateY(-20px) rotate(0deg);opacity:.8}100%{transform:translateY(560px) rotate(720deg);opacity:0}}
+
+/* SEAMLESS GROUND */
+#groundLayer{position:absolute;bottom:0;height:88px;width:400%;display:flex;animation:scrollGround 4s linear infinite;}
+@keyframes scrollGround{0%{transform:translateX(0)}100%{transform:translateX(-25%)}}
+.ground-segment{flex:0 0 25%;height:88px;background:repeating-linear-gradient(90deg,#5c2e7a 0,#5c2e7a 16px,#4a1f6a 16px,#4a1f6a 32px);border-top:4px solid #b06fcf;}
+
+#gameCanvas{position:absolute;inset:0;width:100%;height:100%;}
+
+/* HUD */
+#hud{position:absolute;top:12px;left:0;width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;pointer-events:none;}
+.anxiety-label{font-family:'Press Start 2P',monospace;font-size:7px;color:#ffd1f0;margin-bottom:4px;}
+.anxiety-bar-wrap{width:220px;height:20px;border:3px solid #fff;background:#1a0a2e;box-shadow:3px 3px 0 #000;}
+.anxiety-bar-fill{height:100%;background:linear-gradient(90deg,#44ff88,#ffee00,#ff4444);transition:width .2s;}
+.hud-score{font-family:'Press Start 2P',monospace;font-size:9px;color:#fff;text-shadow:2px 2px 0 #000;}
+.fruit-counter{font-family:'Press Start 2P',monospace;font-size:7px;color:#ffd1f0;}
+
+/* DIALOGUE */
+#dialogueBox{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);width:700px;background:rgba(10,5,30,.97);border:4px solid #ff9ef5;padding:16px 20px;z-index:200;box-shadow:6px 6px 0 #8b0057;display:none;}
+.dialogue-speaker{font-family:'Press Start 2P',monospace;font-size:8px;color:#ffcc00;margin-bottom:8px;}
+.dialogue-text{font-family:'Press Start 2P',monospace;font-size:9px;color:#fff;line-height:1.7;}
+.dialogue-continue{font-family:'Press Start 2P',monospace;font-size:7px;color:#ff9ef5;margin-top:10px;animation:blink 1s step-end infinite;cursor:pointer;}
+@keyframes blink{50%{opacity:0}}
+
+/* QUESTION PANEL */
+#questionPanel{position:absolute;inset:0;background:rgba(8,3,22,.95);z-index:300;display:none;flex-direction:column;align-items:center;padding:0;}
+#charStage{width:100%;height:220px;position:relative;background:linear-gradient(180deg,#1e0a3c 0%,#4a1570 60%,#8b3a8b 100%);border-bottom:3px solid #6a2090;flex-shrink:0;overflow:hidden;}
+#stageCanvas{position:absolute;inset:0;width:100%;height:100%;}
+.speech-bubble{position:absolute;background:#fff;border:3px solid #000;padding:8px 12px;font-family:'Press Start 2P',monospace;font-size:7px;color:#111;line-height:1.6;max-width:260px;z-index:10;min-width:60px;}
+.speech-bubble::after{content:'';position:absolute;bottom:-12px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #000;}
+.speech-bubble::before{content:'';position:absolute;bottom:-8px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #fff;z-index:1;}
+.speech-bubble.left::after{left:20px;}.speech-bubble.left::before{left:22px;}
+.speech-bubble.right::after{right:20px;left:auto;}.speech-bubble.right::before{right:22px;left:auto;}
+#fruitBubble{top:10px;left:60px;}
+#strawberryBubble{top:10px;right:60px;background:#ffe8f5;border-color:#cc2266;display:none;}
+#strawberryBubble::after{border-top-color:#cc2266;}#strawberryBubble::before{border-top-color:#ffe8f5;}
+#questionBottom{width:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 24px 6px;}
+.timer-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.timer-label{font-family:'Press Start 2P',monospace;font-size:7px;color:#ccc;}
+.timer-bar-wrap{width:340px;height:14px;border:3px solid #fff;background:#1a0a2e;box-shadow:3px 3px 0 #000;position:relative;}
+.timer-bar-fill{height:100%;background:linear-gradient(90deg,#44ff88,#ffee00 60%,#ff4444);transition:width .08s linear;}
+.timer-seconds{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-family:'Press Start 2P',monospace;font-size:7px;color:#fff;}
+.answers-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:720px;}
+.answer-btn{font-family:'Press Start 2P',monospace;font-size:7px;background:#2d1b5e;color:#fff;border:3px solid #9060d0;padding:10px;cursor:pointer;text-align:left;line-height:1.6;box-shadow:4px 4px 0 #000;transition:background .15s,transform .1s;}
+.answer-btn:hover{background:#4a2d8a;transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000;}
+.answer-btn.correct{background:#1a5c2e;border-color:#44ff88;pointer-events:none;}
+.answer-btn.wrong{background:#5c1a1a;border-color:#ff4444;pointer-events:none;}
+.answer-btn:disabled{pointer-events:none;}
+.anxiety-warning{font-family:'Press Start 2P',monospace;font-size:8px;color:#ff4444;margin-top:4px;animation:blink .4s step-end infinite;display:none;}
+
+/* END SCREEN */
+#endScreen{background:linear-gradient(180deg,#1a0a2e 0%,#4a1570 50%,#8b3a8b 100%);gap:12px;}
+#endScreen h2{font-family:'Press Start 2P',monospace;font-size:26px;color:#fff;text-shadow:4px 4px 0 #8b0057;}
+.end-score-display{font-family:'Press Start 2P',monospace;font-size:56px;color:#ffcc00;text-shadow:4px 4px 0 #8b0000,-2px -2px 0 #ff9900;}
+.end-grade{font-family:'Press Start 2P',monospace;font-size:12px;color:#ffd1f0;}
+.end-msg{font-family:'Press Start 2P',monospace;font-size:8px;color:#ccc;max-width:600px;text-align:center;line-height:1.8;}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     INTRO — 3-D strawberry pop (unchanged)
+════════════════════════════════════════ -->
+<div id="cursor"></div>
+<div id="bg"></div>
+<div id="deco-layer"></div>
+<canvas id="three-canvas"></canvas>
+<canvas id="splash-canvas"></canvas>
+<div id="hint">Scroll to spin &nbsp;·&nbsp; Click to pop</div>
+
+<!-- ════════════════════════════════════════
+     GAME — revealed after pop
+════════════════════════════════════════ -->
+<div id="gameWrapper">
+  <div id="gameContainer">
+
+    <!-- TITLE -->
+    <div id="titleScreen" class="screen active">
+      <canvas id="titleCanvas" width="960" height="540" style="position:absolute;inset:0;"></canvas>
+      <h1>BERRY ANXIOUS</h1>
+      <div class="subtitle">a game about social anxiety &amp; fruit</div>
+      <button class="start-btn" onclick="startGame()">PLAY</button>
+      <div style="position:absolute;bottom:0;width:100%;height:88px;background:repeating-linear-gradient(90deg,#5c2e7a 0,#5c2e7a 16px,#4a1f6a 16px,#4a1f6a 32px);border-top:4px solid #b06fcf;z-index:1;"></div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="screen">
+      <div id="bgLayer"><div class="sky"></div></div>
+      <!-- trees: 4× wide canvas scrolling seamlessly, bottom flush with ground top -->
+      <canvas id="treesCanvas" width="3840" height="452"
+        style="position:absolute;bottom:88px;left:0;width:400%;height:452px;animation:scrollGround 4s linear infinite;pointer-events:none;image-rendering:pixelated;"></canvas>
+      <div id="groundLayer">
+        <div class="ground-segment"></div><div class="ground-segment"></div>
+        <div class="ground-segment"></div><div class="ground-segment"></div>
+      </div>
+      <canvas id="gameCanvas"></canvas>
+      <div id="hud">
+        <div>
+          <div class="anxiety-label">ANXIETY</div>
+          <div class="anxiety-bar-wrap"><div class="anxiety-bar-fill" id="anxietyFill" style="width:0%"></div></div>
+        </div>
+        <div class="hud-score">SCORE: <span id="scoreDisplay">100</span></div>
+        <div class="fruit-counter">MET: <span id="fruitCounter">0</span>/5</div>
+      </div>
+      <div id="dialogueBox">
+        <div class="dialogue-speaker" id="dialogueSpeaker"></div>
+        <div class="dialogue-text" id="dialogueText"></div>
+        <div class="dialogue-continue" onclick="advanceDialogue()">▼ press to continue</div>
+      </div>
+      <div id="questionPanel">
+        <div id="charStage">
+          <canvas id="stageCanvas" width="960" height="220"></canvas>
+          <div class="speech-bubble left" id="fruitBubble"></div>
+          <div class="speech-bubble right" id="strawberryBubble"></div>
+        </div>
+        <div id="questionBottom">
+          <div class="timer-row">
+            <span class="timer-label">TIME</span>
+            <div class="timer-bar-wrap">
+              <div class="timer-bar-fill" id="timerFill" style="width:100%"></div>
+              <span class="timer-seconds" id="timerSeconds">15s</span>
+            </div>
+          </div>
+          <div class="answers-grid" id="answersGrid"></div>
+          <div class="anxiety-warning" id="anxietyWarning">⚠ ANXIETY RISING!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="screen">
+      <canvas id="endCanvas" width="960" height="540" style="position:absolute;inset:0;opacity:.3;"></canvas>
+      <h2>GAME OVER</h2>
+      <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#ffd1f0;">YOUR FINAL SCORE</div>
+      <div class="end-score-display" id="finalScore">--</div>
+      <div class="end-grade" id="finalGrade">--</div>
+      <div class="end-msg" id="finalMsg"></div>
+      <button class="start-btn" onclick="location.reload()" style="margin-top:16px;">PLAY AGAIN</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   CURSOR
+════════════════════════════════════════════════════════════ */
+const cursorEl = document.getElementById('cursor');
+let mx = innerWidth/2, my = innerHeight/2;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursorEl.style.left = mx+'px'; cursorEl.style.top = my+'px';
+});
+
+/* ════════════════════════════════════════════════════════════
+   DECO EMOJI BERRIES (identical to uploaded source)
+════════════════════════════════════════════════════════════ */
+const decoLayer = document.getElementById('deco-layer');
+const decoItems = [];
+const decoSizes=['1.0rem','2.2rem','1.5rem','2.8rem','1.2rem','2.0rem','1.4rem','2.5rem','1.1rem','1.8rem','2.4rem','1.3rem','2.0rem','1.6rem','2.6rem','1.2rem','1.9rem','2.3rem','1.4rem','2.1rem','1.7rem','2.5rem','1.1rem','2.0rem','1.5rem'];
+let didx=0;
+for(let drow=0;drow<5;drow++) for(let dcol=0;dcol<5;dcol++){
+  const el=document.createElement('span'); el.className='deco-berry';
+  const cellW=90/5, cellH=90/5;
+  const x=5+dcol*cellW+cellW*.15+Math.random()*cellW*.7;
+  const y=5+drow*cellH+cellH*.15+Math.random()*cellH*.7;
+  const rot=Math.random()*360, dur=2.8+Math.random()*3.8;
+  const op=0.18+Math.random()*.30, del=Math.random()*3.5;
+  el.style.cssText=`left:${x}%;top:${y}%;font-size:${decoSizes[didx]};--rot:${rot}deg;--dur:${dur}s;--op:${op};--del:${del}s`;
+  el.textContent='🍓';
+  decoLayer.appendChild(el);
+  decoItems.push({el,baseX:x,baseY:y});
+  didx++;
+}
+
+/* ════════════════════════════════════════════════════════════
+   THREE.JS SETUP (identical to uploaded source)
+════════════════════════════════════════════════════════════ */
+const canvas3=document.getElementById('three-canvas');
+const renderer=new THREE.WebGLRenderer({canvas:canvas3,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.physicallyCorrectLights=true;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,100);
+camera.position.set(0,.1,6.5);
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* Lights */
+const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(0,10,3); scene.add(key);
+const key2=new THREE.DirectionalLight(0xfff4f4,1.6); key2.position.set(-1,8,1); scene.add(key2);
+const fill=new THREE.DirectionalLight(0xffe8ee,.8); fill.position.set(0,2,6); scene.add(fill);
+const rim=new THREE.DirectionalLight(0xff7090,.25); rim.position.set(0,-4,-3); scene.add(rim);
+scene.add(new THREE.AmbientLight(0xffd8e0,.9));
+const hotspot=new THREE.PointLight(0xffffff,1.2,16); hotspot.position.set(0,3.5,3); scene.add(hotspot);
+
+/* Berry group */
+const berryGroup=new THREE.Group(); scene.add(berryGroup);
+
+const profilePts=[
+  new THREE.Vector2(0.01, 1.10),new THREE.Vector2(0.28, 1.06),new THREE.Vector2(0.60, 1.00),
+  new THREE.Vector2(0.90, 0.80),new THREE.Vector2(1.04, 0.46),new THREE.Vector2(1.02, 0.08),
+  new THREE.Vector2(0.96,-0.24),new THREE.Vector2(0.84,-0.52),new THREE.Vector2(0.68,-0.78),
+  new THREE.Vector2(0.50,-0.98),new THREE.Vector2(0.34,-1.12),new THREE.Vector2(0.22,-1.22),
+  new THREE.Vector2(0.13,-1.28),new THREE.Vector2(0.06,-1.30),new THREE.Vector2(0.01,-1.31),
+];
+const bodyGeo=new THREE.LatheGeometry(profilePts,128);
+const tipCapGeo=new THREE.CircleGeometry(0.01,16);
+const tipCapMesh=new THREE.Mesh(tipCapGeo,null);
+tipCapMesh.rotation.x=Math.PI/2; tipCapMesh.position.y=-1.31;
+berryGroup.add(tipCapMesh);
+
+function buildBodyTexture(){
+  const SZ=1024,cv=document.createElement('canvas');cv.width=SZ;cv.height=SZ;
+  const g=cv.getContext('2d');
+  g.fillStyle='#ff2d44';g.fillRect(0,0,SZ,SZ);
+  const vGrad=g.createLinearGradient(0,0,0,SZ);
+  vGrad.addColorStop(0,'rgba(255,160,160,0.35)');vGrad.addColorStop(.25,'rgba(255,100,100,0.12)');
+  vGrad.addColorStop(.5,'rgba(0,0,0,0)');vGrad.addColorStop(1,'rgba(0,0,0,0.18)');
+  g.fillStyle=vGrad;g.fillRect(0,0,SZ,SZ);
+  const rows=[{v:.07,count:5,uOff:.00},{v:.13,count:6,uOff:.08},{v:.19,count:7,uOff:.03},{v:.25,count:8,uOff:.00},{v:.31,count:9,uOff:.06},{v:.37,count:9,uOff:.02},{v:.43,count:9,uOff:.05},{v:.49,count:8,uOff:.01},{v:.55,count:8,uOff:.07},{v:.61,count:7,uOff:.03},{v:.67,count:6,uOff:.09},{v:.73,count:5,uOff:.11},{v:.79,count:4,uOff:.12},{v:.84,count:3,uOff:.17},{v:.89,count:2,uOff:.25}];
+  for(const row of rows){
+    const py=row.v*SZ,bodyR=Math.sin(row.v*Math.PI)*.9+.1,dotR=Math.max(8,bodyR*12);
+    for(let i=0;i<row.count;i++){
+      const u=(row.uOff+i/row.count)%1.0,px=u*SZ;
+      for(const ox of[0,SZ]){
+        const x=px+ox;
+        g.beginPath();g.arc(x,py,dotR*1.5,0,Math.PI*2);g.fillStyle='rgba(70,0,8,0.55)';g.fill();
+        g.beginPath();g.arc(x,py,dotR*1.15,0,Math.PI*2);g.fillStyle='rgba(100,5,12,0.45)';g.fill();
+        const sg=g.createRadialGradient(x-dotR*.3,py-dotR*.3,dotR*.04,x,py,dotR);
+        sg.addColorStop(0,'#fffac0');sg.addColorStop(.30,'#f7d020');sg.addColorStop(.70,'#d09010');sg.addColorStop(1,'#906008');
+        g.beginPath();g.arc(x,py,dotR*.82,0,Math.PI*2);g.fillStyle=sg;g.fill();
+        g.beginPath();g.arc(x-dotR*.3,py-dotR*.3,dotR*.22,0,Math.PI*2);g.fillStyle='rgba(255,255,230,0.75)';g.fill();
+      }
+    }
+  }
+  const tex=new THREE.CanvasTexture(cv);tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;return tex;
+}
+const bodyMat=new THREE.MeshPhongMaterial({color:new THREE.Color(0xffffff),specular:new THREE.Color(0xaa7777),shininess:28,map:buildBodyTexture()});
+const bodyMesh=new THREE.Mesh(bodyGeo,bodyMat);
+berryGroup.add(bodyMesh); tipCapMesh.material=bodyMat;
+
+function makeLeaf(w,h){
+  const shape=new THREE.Shape();shape.moveTo(0,0);
+  shape.bezierCurveTo(w*.6,h*.1,w*.9,h*.55,0,h);
+  shape.bezierCurveTo(-w*.9,h*.55,-w*.6,h*.1,0,0);
+  return new THREE.ShapeGeometry(shape,16);
+}
+const leafMatA=new THREE.MeshPhongMaterial({color:new THREE.Color(0x4ec840),specular:new THREE.Color(0x88ee88),shininess:60,emissive:new THREE.Color(0x082008),emissiveIntensity:.08,side:THREE.DoubleSide});
+const leafMatB=new THREE.MeshPhongMaterial({color:new THREE.Color(0x38aa28),specular:new THREE.Color(0x66cc66),shininess:50,emissive:new THREE.Color(0x051505),emissiveIntensity:.08,side:THREE.DoubleSide});
+const leafDefs=[
+  {ry:0,           rz:-1.25,w:.22,h:.48,mat:leafMatA},{ry:Math.PI*2/5,rz:-1.20,w:.18,h:.42,mat:leafMatB},
+  {ry:Math.PI*4/5, rz:-1.22,w:.20,h:.46,mat:leafMatA},{ry:Math.PI*6/5,rz:-1.18,w:.18,h:.44,mat:leafMatB},
+  {ry:Math.PI*8/5, rz:-1.24,w:.22,h:.48,mat:leafMatA},
+];
+for(const ld of leafDefs){
+  const geo=makeLeaf(ld.w,ld.h),mesh=new THREE.Mesh(geo,ld.mat),pivot=new THREE.Group();
+  pivot.rotation.y=ld.ry; mesh.rotation.z=ld.rz; mesh.position.y=1.10;
+  pivot.add(mesh); berryGroup.add(pivot);
+}
+const stemCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,1.10,0),new THREE.Vector3(.03,1.26,.01),new THREE.Vector3(.04,1.40,-.01),new THREE.Vector3(.02,1.52,0)]);
+berryGroup.add(new THREE.Mesh(new THREE.TubeGeometry(stemCurve,10,.032,7,false),new THREE.MeshPhongMaterial({color:0x2a8a20,shininess:40})));
+
+function fitBerry(){
+  const targetH=Math.min(innerWidth,innerHeight)*(1/4);
+  const fov=camera.fov*Math.PI/180, dist=camera.position.z;
+  const screenH=2*Math.tan(fov/2)*dist, pixPerUnit=innerHeight/screenH;
+  const berryHeightUnits=2.42, currentPix=berryHeightUnits*pixPerUnit;
+  berryGroup.scale.setScalar(targetH/currentPix);
+}
+fitBerry(); window.addEventListener('resize',fitBerry);
+
+/* Rotation */
+let rotY=0,rotX=0,velY=0,velX=0,parallaxX=0,parallaxY=0,animRunning=true;
+document.addEventListener('wheel',e=>{e.preventDefault();velY+=e.deltaX*.006;velX+=e.deltaY*.004;},{passive:false});
+let ltx=null,lty=null;
+document.addEventListener('touchmove',e=>{if(!ltx){ltx=e.touches[0].clientX;lty=e.touches[0].clientY;return;}velY-=(e.touches[0].clientX-ltx)*.012;velX-=(e.touches[0].clientY-lty)*.008;ltx=e.touches[0].clientX;lty=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',()=>{ltx=null;lty=null;});
+
+const raycaster=new THREE.Raycaster(), mouse2D=new THREE.Vector2();
+canvas3.addEventListener('mousemove',e=>{
+  mouse2D.x=(e.clientX/innerWidth)*2-1; mouse2D.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse2D,camera);
+  cursorEl.classList.toggle('big',raycaster.intersectObjects(berryGroup.children,true).length>0);
+});
+canvas3.addEventListener('click',e=>{
+  if(popped)return;
+  mouse2D.x=(e.clientX/innerWidth)*2-1; mouse2D.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse2D,camera);
+  if(raycaster.intersectObjects(berryGroup.children,true).length>0) triggerPop();
+});
+
+/* Render loop */
+let bobTime=0,swellPhase=0,swellT=0,onSwellPeak=null;
+function renderLoop(){
+  requestAnimationFrame(renderLoop); bobTime+=.016;
+  const cx=(mx/innerWidth-.5), cy=(my/innerHeight-.5);
+  if(animRunning){
+    velY+=cx*.003;velX-=cy*.002;velY*=.91;velX*=.91;
+    rotY+=velY;rotX+=velX;rotX=Math.max(-.65,Math.min(.65,rotX));
+    berryGroup.rotation.y=rotY; berryGroup.rotation.x=rotX;
+    berryGroup.position.y=Math.sin(bobTime*1.05)*.06*berryGroup.scale.x;
+    parallaxX+=(cx-parallaxX)*.06; parallaxY+=(cy-parallaxY)*.06;
+    decoItems.forEach((b,i)=>{const d=.3+(i%7)*.18;b.el.style.left=(b.baseX+parallaxX*d*18)+'%';b.el.style.top=(b.baseY+parallaxY*d*18)+'%';});
+  }
+  if(swellPhase===1){
+    swellT+=.020; const sc=berryGroup.userData.baseScale||1;
+    let s;
+    if(swellT<.55){s=1+Math.sin((swellT/.55)*Math.PI*.5)*.5;bodyMat.color.setRGB(Math.min(1,1+swellT*.4),1,1);}
+    else{s=1.5*(1-(swellT-.55)/.45);}
+    berryGroup.scale.setScalar(Math.max(.001,sc*s));
+    if(swellT>=.55&&onSwellPeak){onSwellPeak();onSwellPeak=null;}
+    if(swellT>=1.0){swellPhase=2;berryGroup.visible=false;}
+  }
+  renderer.render(scene,camera);
+}
+setTimeout(()=>{berryGroup.userData.baseScale=berryGroup.scale.x;},100);
+renderLoop();
+
+/* ════════════════════════════════════════════════════════════
+   SYRUP SPLASH (identical to uploaded source)
+════════════════════════════════════════════════════════════ */
+const splashCanvas=document.getElementById('splash-canvas');
+const sCtx=splashCanvas.getContext('2d');
+function resizeSplash(){splashCanvas.width=innerWidth;splashCanvas.height=innerHeight;}
+resizeSplash(); window.addEventListener('resize',resizeSplash);
+
+class SyrupDrop{
+  constructor(cx,cy){
+    const angle=Math.random()*Math.PI*2,spd=5+Math.random()*28;
+    this.x=cx;this.y=cy;this.vx=Math.cos(angle)*spd;this.vy=Math.sin(angle)*spd-Math.random()*10;
+    this.r=6+Math.random()*26;this.alpha=1;this.stuck=false;this.sp=0;
+    this.grav=.4+Math.random()*.25;this.drag=.965+Math.random()*.02;
+    this.trail=[];this.wob=Math.random()*Math.PI*2;
+    const h=336+Math.random()*20,s=82+Math.random()*14,l=28+Math.random()*16;
+    this.color=`hsl(${h},${s}%,${l}%)`;
+  }
+  update(){
+    if(this.stuck){this.sp=Math.min(1,this.sp+.055);return;}
+    this.trail.push({x:this.x,y:this.y,r:this.r*.4});
+    if(this.trail.length>14)this.trail.shift();
+    this.vy+=this.grav;this.vx*=this.drag;this.vy*=this.drag;
+    this.x+=this.vx;this.y+=this.vy;
+    if(this.x<-80||this.x>innerWidth+80||this.y>innerHeight+80)this.stuck=true;
+  }
+  draw(c){
+    c.save();
+    this.trail.forEach((t,i)=>{c.globalAlpha=(i/this.trail.length)*this.alpha*.4;c.fillStyle=this.color;c.beginPath();c.arc(t.x,t.y,t.r,0,Math.PI*2);c.fill();});
+    c.globalAlpha=this.alpha;c.fillStyle=this.color;
+    if(this.stuck){
+      const sp=this.sp,pts=10;c.beginPath();
+      for(let i=0;i<=pts;i++){const a=(i/pts)*Math.PI*2;const j=1+(Math.sin(a*5+this.wob)*.3+Math.cos(a*8+this.wob*.7)*.12);const r=this.r*(1+sp*1.7)*j;i===0?c.moveTo(this.x+Math.cos(a)*r,this.y+Math.sin(a)*r):c.lineTo(this.x+Math.cos(a)*r,this.y+Math.sin(a)*r);}
+      c.closePath();c.fill();
+      if(sp>.2&&this.y<innerHeight-10){
+        const dl=sp*this.r*3.2;
+        c.beginPath();c.arc(this.x,this.y+this.r+dl*.5,this.r*.42,0,Math.PI*2);c.fill();
+        c.beginPath();c.moveTo(this.x-this.r*.3,this.y+this.r*.5);c.lineTo(this.x+this.r*.3,this.y+this.r*.5);c.lineTo(this.x+this.r*.24,this.y+this.r+dl);c.lineTo(this.x-this.r*.24,this.y+this.r+dl);c.closePath();c.fill();
+      }
+    }else{c.beginPath();c.arc(this.x,this.y,this.r,0,Math.PI*2);c.fill();}
+    c.restore();
+  }
+}
+
+let drops=[],splashRafId=null;
+function launchSplash(cx,cy){
+  drops=[];
+  for(let i=0;i<110;i++)drops.push(new SyrupDrop(cx,cy));
+  for(let i=0;i<22;i++){const d=new SyrupDrop(cx,cy);d.vy=Math.abs(d.vy)+3;d.r=20+Math.random()*38;drops.push(d);}
+  cancelAnimationFrame(splashRafId);
+  let coverStarted=false;
+  function loop(){splashRafId=requestAnimationFrame(loop);sCtx.clearRect(0,0,innerWidth,innerHeight);drops.forEach(d=>{d.update();d.draw(sCtx);});if(!coverStarted&&drops.filter(d=>d.stuck).length>30){coverStarted=true;setTimeout(startCover,140);}}
+  loop();
+}
+function startCover(){
+  let t=0;
+  function cl(){
+    t+=.022;const alpha=Math.min(1,t);
+    sCtx.clearRect(0,0,innerWidth,innerHeight);drops.forEach(d=>d.draw(sCtx));
+    sCtx.save();sCtx.globalAlpha=alpha*.97;sCtx.fillStyle='#b0101e';sCtx.fillRect(0,0,innerWidth,innerHeight);sCtx.restore();
+    if(alpha<1)requestAnimationFrame(cl);else{cancelAnimationFrame(splashRafId);revealGame();}
+  }
+  cl();
+}
+
+/* ════════════════════════════════════════════════════════════
+   POP → reveal game title screen
+════════════════════════════════════════════════════════════ */
+let popped=false;
+function triggerPop(){
+  popped=true; cursorEl.classList.remove('big');
+  document.getElementById('hint').style.opacity='0';
+  animRunning=false;
+  berryGroup.userData.baseScale=berryGroup.scale.x;
+  swellPhase=1; swellT=0;
+  onSwellPeak=()=>launchSplash(innerWidth/2,innerHeight/2);
+}
+function revealGame(){
+  const gw=document.getElementById('gameWrapper');
+  gw.classList.add('visible');
+  setTimeout(()=>{
+    // hide intro layer entirely once game is visible
+    document.getElementById('bg').style.display='none';
+    document.getElementById('deco-layer').style.display='none';
+    canvas3.style.display='none';
+    splashCanvas.style.display='none';
+    document.getElementById('hint').style.display='none';
+    // draw title canvas now that it's visible
+    initTitleCanvas();
+  },600);
+}
+
+/* ════════════════════════════════════════════════════════════
+   GAME — PIXEL ART  (S=9 → 40% of 15, trees ≥50% screen)
+════════════════════════════════════════════════════════════ */
+const S  = 9;   // world sprite scale  (was 15 → 40% smaller)
+const SS = 5;   // stage panel scale
+
+/* ── WING DRAWING ── */
+const WING_MAP=[
+  [0,0,1,1,1,1,1,0,0],[0,1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1,1],
+  [0,1,1,0,1,1,1,1,0],[0,0,1,0,0,1,1,0,0],[0,0,0,0,0,0,1,0,0],
+];
+const WING_INNER=[
+  [0,0,0,0,0,1,1,0,0],[0,0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+];
+function drawWing(c,wx,wy,s,flip){
+  const W=WING_MAP[0].length;
+  for(let r=0;r<WING_MAP.length;r++) for(let col=0;col<W;col++){
+    if(!WING_MAP[r][col])continue;
+    const ci=flip?(W-1-col):col;
+    c.fillStyle=WING_INNER[r][col]?'#f0f8ff':(r<2?'#dce8ff':r<4?'#b8d0f8':'#8ab8f0');
+    c.fillRect(wx+ci*s,wy+r*s,s,s);
+  }
+  for(let r=0;r<WING_MAP.length;r++) for(let col=0;col<W;col++){
+    const ci=flip?(W-1-col):col,has=WING_MAP[r][col];
+    const left=col>0?WING_MAP[r][col-1]:0,right=col<W-1?WING_MAP[r][col+1]:0;
+    const up=r>0?WING_MAP[r-1][col]:0,dn=r<WING_MAP.length-1?WING_MAP[r+1][col]:0;
+    if(has&&(!left||!right||!up||!dn)){c.fillStyle='rgba(40,60,120,0.45)';c.fillRect(wx+ci*s,wy+r*s,s,s);}
+  }
+}
+function attachWings(c,cx,bodyTopY,s,frame){
+  const wf=Math.sin(frame*.35),wLift=Math.round(wf*s*1.2);
+  const wingW=WING_MAP[0].length*s,wingY=bodyTopY+s*2;
+  drawWing(c,cx-wingW-s,wingY-wLift,s,false);
+  drawWing(c,cx+s,wingY+wLift,s,true);
+}
+
+/* ── STRAWBERRY ── */
+const BERRY_BODY=[[0,1,1,1,1,1,0],[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[1,1,1,1,1,1,1],[0,1,1,1,1,1,0],[0,0,1,1,1,0,0]];
+const BERRY_SEEDS=new Set(['1,2','2,4','3,1','3,5','4,3']);
+const BERRY_LEAVES=[[0,1,0,0,1,0,0],[1,1,1,1,1,1,0],[0,1,1,1,1,0,0]];
+function drawStrawberry(c,ox,oy,frame,s){
+  const bob=Math.round(Math.sin(frame*.4)*s*.5),bx=ox,by=oy+bob;
+  attachWings(c,bx+3.5*s,by,s,frame);
+  const lc=['#2a7a2a','#1e6b1e','#3d9e3d','#1e6b1e'];
+  for(let r=0;r<BERRY_LEAVES.length;r++) for(let col=0;col<BERRY_LEAVES[r].length;col++)
+    if(BERRY_LEAVES[r][col]){c.fillStyle=lc[(r+col)%lc.length];c.fillRect(bx+col*s,by+(r-3)*s,s,s);}
+  c.fillStyle='#1e6b1e';c.fillRect(bx+3*s,by-4*s,s,s);
+  for(let r=0;r<BERRY_BODY.length;r++) for(let col=0;col<BERRY_BODY[r].length;col++)
+    if(BERRY_BODY[r][col]){
+      const isSeed=BERRY_SEEDS.has(`${r},${col}`),hi=(r<=1&&col>=2&&col<=4);
+      c.fillStyle=isSeed?'#ffe0a0':hi?'#f04040':'#cc1c1c';c.fillRect(bx+col*s,by+r*s,s,s);
+    }
+  c.fillStyle='#8b0000';c.fillRect(bx+2*s,by+6*s,3*s,s);
+  c.fillStyle='rgba(255,255,255,0.4)';c.fillRect(bx+2*s,by+s,s,s);
+}
+
+/* ── FRUIT SPRITES ── */
+function drawPeach(c,ox,oy,s,frame){
+  const bob=Math.round(Math.sin(frame*.4)*s*.5),bx=ox,by=oy+bob;
+  const body=[[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0]];
+  const hl=new Set(['0,3','1,2','2,1','2,2']),bl=new Set(['3,1','4,1','3,6','4,6']);
+  attachWings(c,bx+4*s,by,s,frame);
+  for(let r=0;r<body.length;r++) for(let col=0;col<body[r].length;col++){if(!body[r][col])continue;const k=`${r},${col}`;c.fillStyle=hl.has(k)?'#ffe0b0':bl.has(k)?'#ff8060':'#ffb070';c.fillRect(bx+col*s,by+r*s,s,s);}
+  c.fillStyle='#e07040';for(let r=1;r<7;r++)c.fillRect(bx+4*s,by+r*s,s,s);
+  c.fillStyle='#2a8a2a';c.fillRect(bx+3*s,by-2*s,2*s,s);c.fillRect(bx+4*s,by-3*s,s,s);
+  c.fillStyle='#8b5a1a';c.fillRect(bx+4*s,by-4*s,s,2*s);
+  c.fillStyle='rgba(255,255,255,0.35)';c.fillRect(bx+2*s,by+s,s,s);
+  c.fillStyle='#3a1a00';c.fillRect(bx+2*s,by+3*s,s,s);c.fillRect(bx+5*s,by+3*s,s,s);
+  c.fillRect(bx+2*s,by+5*s,s,s);c.fillRect(bx+3*s,by+6*s,2*s,s);c.fillRect(bx+5*s,by+5*s,s,s);
+}
+function drawMango(c,ox,oy,s,frame){
+  const bob=Math.round(Math.sin(frame*.4)*s*.5),bx=ox,by=oy+bob;
+  const body=[[0,0,0,1,1,1,0,0],[0,0,1,1,1,1,1,0],[0,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,0],[0,0,0,1,1,1,0,0]];
+  const hl=new Set(['1,3','2,2','2,3']),dp=new Set(['5,1','6,2','7,3']);
+  attachWings(c,bx+4*s,by,s,frame);
+  for(let r=0;r<body.length;r++) for(let col=0;col<body[r].length;col++){if(!body[r][col])continue;const k=`${r},${col}`;c.fillStyle=hl.has(k)?'#ffe066':dp.has(k)?'#c05000':(col>4?'#ff9020':'#ffb030');c.fillRect(bx+col*s,by+r*s,s,s);}
+  c.fillStyle='#ff5010';for(let r=2;r<6;r++)c.fillRect(bx+(r<4?5:6)*s,by+r*s,s,s);
+  c.fillStyle='#8b5a1a';c.fillRect(bx+4*s,by-3*s,s,3*s);
+  c.fillStyle='#2a8a2a';c.fillRect(bx+3*s,by-4*s,3*s,s);c.fillRect(bx+5*s,by-5*s,2*s,s);
+  c.fillStyle='#3a1a00';c.fillRect(bx+2*s,by+2*s,2*s,s);c.fillRect(bx+5*s,by+2*s,2*s,s);
+  c.fillRect(bx+2*s,by+3*s,s,s);c.fillRect(bx+5*s,by+3*s,s,s);c.fillRect(bx+2*s,by+5*s,4*s,s);
+}
+function drawBlueberry(c,ox,oy,s,frame){
+  const bob=Math.round(Math.sin(frame*.4)*s*.5),bx=ox,by=oy+bob;
+  const body=[[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0]];
+  const lt=new Set(['0,2','1,2','2,1']),dk=new Set(['4,4','5,3','5,4','6,2','6,3']);
+  attachWings(c,bx+4*s,by,s,frame);
+  for(let r=0;r<body.length;r++) for(let col=0;col<body[r].length;col++){if(!body[r][col])continue;const k=`${r},${col}`;c.fillStyle=lt.has(k)?'#9080e0':dk.has(k)?'#2a1060':'#4a28a8';c.fillRect(bx+col*s,by+r*s,s,s);}
+  c.fillStyle='#2a1060';c.fillRect(bx+2*s,by-s,4*s,s);c.fillRect(bx+2*s,by-2*s,s,s);c.fillRect(bx+5*s,by-2*s,s,s);c.fillRect(bx+3*s,by-3*s,2*s,s);
+  c.fillStyle='rgba(200,200,255,0.4)';c.fillRect(bx+2*s,by+s,s,s);
+  c.fillStyle='#000';c.fillRect(bx+2*s,by+2*s,s,s);c.fillRect(bx+5*s,by+2*s,s,s);
+  c.fillStyle='#fff';c.fillRect(bx+2*s,by+2*s,Math.max(1,s/2),Math.max(1,s/2));
+  c.fillStyle='#1a0850';c.fillRect(bx+2*s,by+4*s,s,s);c.fillRect(bx+3*s,by+5*s,2*s,s);c.fillRect(bx+5*s,by+4*s,s,s);
+}
+function drawPineapple(c,ox,oy,s,frame){
+  const bob=Math.round(Math.sin(frame*.4)*s*.5),bx=ox,by=oy+bob;
+  const body=[[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0]];
+  attachWings(c,bx+4*s,by,s,frame);
+  for(let r=0;r<body.length;r++) for(let col=0;col<body[r].length;col++){if(!body[r][col])continue;c.fillStyle=(r+col)%2?'#e8a020':'#c87a10';c.fillRect(bx+col*s,by+r*s,s,s);}
+  c.fillStyle='#a06010';for(let r=0;r<body.length;r++) for(let col=0;col<body[r].length;col++) if(body[r][col]&&(r+col)%4===0)c.fillRect(bx+col*s,by+r*s,s,s);
+  const lf=[{dx:0,dy:-6,w:1,h:4,col:'#1a6a1a'},{dx:2,dy:-7,w:1,h:5,col:'#2a8a2a'},{dx:4,dy:-8,w:2,h:6,col:'#3daa3d'},{dx:6,dy:-7,w:1,h:5,col:'#2a8a2a'},{dx:-1,dy:-5,w:1,h:3,col:'#1a6a1a'}];
+  for(const l of lf){c.fillStyle=l.col;c.fillRect(bx+l.dx*s,by+l.dy*s,l.w*s,l.h*s);}
+  c.fillStyle='rgba(255,255,200,0.3)';c.fillRect(bx+s,by+s,s,s);
+  c.fillStyle='#3a1a00';c.fillRect(bx+2*s,by+2*s,s,s);c.fillRect(bx+5*s,by+2*s,s,s);
+  c.fillRect(bx+s,by+4*s,s,s);c.fillRect(bx+2*s,by+5*s,4*s,s);c.fillRect(bx+6*s,by+4*s,s,s);
+}
+function drawGrapes(c,ox,oy,s,frame){
+  const bob=Math.round(Math.sin(frame*.4)*s*.5),bx=ox,by=oy+bob;
+  attachWings(c,bx+4*s,by,s,frame);
+  const gp=[{gx:1,gy:0},{gx:3,gy:0},{gx:0,gy:2},{gx:2,gy:2},{gx:4,gy:2},{gx:1,gy:4},{gx:3,gy:4},{gx:2,gy:6}];
+  for(const g of gp){
+    const gx=bx+g.gx*s*1.6,gy=by+g.gy*s*1.4;
+    c.fillStyle='#6020a0';c.fillRect(gx+s,gy,s,s*3);c.fillRect(gx,gy+s,s*3,s);
+    c.fillStyle='#8040c0';c.fillRect(gx+s,gy+s,s,s);
+    c.fillStyle='rgba(220,180,255,0.6)';c.fillRect(gx+s,gy,s,s);
+  }
+  c.fillStyle='#8b5a1a';c.fillRect(bx+4*s,by-3*s,s,4*s);
+  c.fillStyle='#2a8a2a';c.fillRect(bx+2*s,by-5*s,4*s,2*s);c.fillRect(bx,by-4*s,3*s,s);
+  const fx=bx+2*s*1.6,fy=by+2*s*1.4;
+  c.fillStyle='#fff';c.fillRect(fx+s,fy+s,s,s);c.fillRect(fx+2*s,fy+s,s,s);
+  c.fillStyle='#000';c.fillRect(fx+s,fy+s,s,s);c.fillRect(fx+2*s,fy+s,s,s);
+  c.fillStyle='#3a0060';c.fillRect(fx+s,fy+2*s,s,s);c.fillRect(fx+Math.floor(s*1.5),fy+3*s,s,s);c.fillRect(fx+2*s,fy+2*s,s,s);
+}
+function drawFruitByIndex(c,idx,ox,oy,s,frame){
+  frame=frame||0;
+  switch(idx){case 0:drawPeach(c,ox,oy,s,frame);break;case 1:drawMango(c,ox,oy,s,frame);break;case 2:drawBlueberry(c,ox,oy,s,frame);break;case 3:drawPineapple(c,ox,oy,s,frame);break;case 4:drawGrapes(c,ox,oy,s,frame);break;}
+}
+
+/* ── TREES — tall enough so canopy covers ≥50% of 540px screen height ──
+   Ground top = 452px from top (= 540-88).
+   Trunk height = 140px  → trunk top at y=312.
+   Canopy extends ~220px above trunk top → canopy top at y≈92.
+   Total tree height ≈ 360px which is 360/540 = 67% of screen. ✓
+   Canopy base anchored to trunk top + 12px overlap so they're visually joined. */
+function drawTree(c,ox,oy,type){
+  // oy = ground level (452)
+  const trunkH=140, trunkW=24, trunkX=ox+50;
+  const trunkTop=oy-trunkH; // 312
+
+  // Branches — drawn before trunk so trunk overlaps
+  c.fillStyle='#6a3a10';
+  c.fillRect(trunkX-30,trunkTop+24,30,12);
+  c.fillRect(trunkX+trunkW,trunkTop+34,30,12);
+  c.fillRect(trunkX-2,trunkTop-16,10,36);
+  c.fillRect(trunkX+16,trunkTop-12,10,40);
+
+  // Trunk
+  c.fillStyle='#7a4a1a';c.fillRect(trunkX,trunkTop,trunkW,trunkH);
+  c.fillStyle='#5a3010';c.fillRect(trunkX+trunkW-6,trunkTop,6,trunkH);
+
+  // Canopy base anchored just inside trunk top
+  const canopyBaseY=trunkTop+14; // 326 → canopy draws upward from here
+  const canopyOx=ox-8;
+
+  if(type===0){
+    // Pink blossom — large overlapping blobs rising ~220px above canopyBaseY
+    const pinks=['#ff9ec7','#ff69b4','#ffb3d9','#e75480','#ffd1ec','#ff80b0'];
+    const blobs=[
+      {dx:18,dy:0,   w:80,h:70},{dx:44,dy:-36,w:95,h:88},
+      {dx:6, dy:-28,w:78,h:82},{dx:74,dy:-22,w:76,h:74},
+      {dx:30,dy:20,  w:86,h:62},{dx:-6,dy:-56,w:70,h:76},
+      {dx:22,dy:-80,w:80,h:80},{dx:62,dy:-60,w:74,h:72},
+      {dx:96,dy:-16,w:68,h:68},{dx:-14,dy:8, w:62,h:56},
+      {dx:38,dy:-108,w:70,h:66},{dx:70,dy:-88,w:66,h:64},
+      {dx:12,dy:-130,w:64,h:60},{dx:52,dy:-118,w:62,h:58},
+    ];
+    blobs.forEach((b,i)=>{
+      const rx=b.w/2,ry=b.h/2;
+      for(let py=0;py<b.h;py+=4) for(let px=0;px<b.w;px+=4){
+        const nx=(px-rx)/rx,ny=(py-ry)/ry;
+        if(nx*nx+ny*ny<1){c.fillStyle=pinks[(i+Math.floor(py/8)+Math.floor(px/8))%pinks.length];c.fillRect(canopyOx+b.dx+px,canopyBaseY+b.dy+py,4,4);}
+      }
+    });
+    c.fillStyle='#fff8f8';
+    for(let i=0;i<44;i++)c.fillRect(canopyOx+8+Math.floor(i*17)%150,canopyBaseY-50+Math.floor(i*11)%140,4,4);
+  } else {
+    // Purple autumn
+    const purps=['#9b59b6','#7d3c98','#b06fcf','#4a235a','#d2a8f0','#6020a0'];
+    const blobs=[
+      {dx:18,dy:0,   w:78,h:68},{dx:44,dy:-34,w:92,h:86},
+      {dx:6, dy:-26,w:76,h:80},{dx:72,dy:-20,w:74,h:72},
+      {dx:28,dy:18,  w:84,h:60},{dx:-4,dy:-54,w:68,h:74},
+      {dx:20,dy:-78,w:78,h:78},{dx:60,dy:-58,w:72,h:70},
+      {dx:94,dy:-14,w:66,h:66},{dx:-12,dy:6, w:60,h:54},
+      {dx:36,dy:-106,w:68,h:64},{dx:68,dy:-86,w:64,h:62},
+      {dx:10,dy:-128,w:62,h:58},{dx:50,dy:-116,w:60,h:56},
+    ];
+    blobs.forEach((b,i)=>{
+      const rx=b.w/2,ry=b.h/2;
+      for(let py=0;py<b.h;py+=4) for(let px=0;px<b.w;px+=4){
+        const nx=(px-rx)/rx,ny=(py-ry)/ry;
+        if(nx*nx+ny*ny<1){c.fillStyle=purps[(i+Math.floor(py/8)+Math.floor(px/8))%purps.length];c.fillRect(canopyOx+b.dx+px,canopyBaseY+b.dy+py,4,4);}
+      }
+    });
+  }
+}
+
+/* ── GAME DATA ── */
+const FRUITS=[
+  {name:"Percy the Peach",drawFn:0,color:"#ffb070",
+   intro:"Oh hey there! You must be new. I'm Percy. Fair warning — I may look soft and fuzzy, but I have been known to ask some truly challenging questions. Don't say I didn't warn you.",
+   questions:[
+    {question:"Percy narrows his eyes. 'Name ONE thing that makes you genuinely interesting to talk to.'",answers:["I listen more than I talk, and I always ask good questions.","I can name all the US states in alphabetical order.","I once ate a whole pizza. The whole thing.","I smile and nod until people stop talking."],correct:0,time:12},
+    {question:"Percy leans closer. 'If I told you I was having a rough week, what would you actually do?'",answers:["I would scroll my phone and say that sucks.","I'd genuinely ask what happened and listen.","I would immediately share a worse week I had.","I would recommend a podcast about stoicism."],correct:1,time:12},
+    {question:"Percy asks: 'What do you do when someone disagrees with you?'",answers:["I go quiet and seethe about it for three to five business days.","I listen to understand their point, then share mine calmly.","I explain why I'm right until they give up.","I immediately agree to avoid conflict at all costs."],correct:1,time:13}
+  ]},
+  {name:"Manny the Mango",drawFn:1,color:"#ffb030",
+   intro:"So. A winged strawberry walks up to me. Very dramatic entrance. I respect it. But respect is earned in conversation, not in landing. Let's see what you are actually made of.",
+   questions:[
+    {question:"Manny crosses his arms. 'They ghosted me for four days then replied k. How do you handle rejection?'",answers:["I give myself a moment, then remind myself it says more about them.","I replay the interaction 800 times in my head searching for clues.","I send a follow-up message every 12 hours until they respond.","I write a very detailed note and then delete it without sending."],correct:0,time:11},
+    {question:"Manny asks: 'You are at a party where you know nobody. What do you actually do?'",answers:["I find the snack table and become its permanent guardian.","I leave and call it a win that I showed up at all.","I find one person, introduce myself, and ask them something genuine.","I spend 45 minutes in the bathroom composing myself."],correct:2,time:11},
+    {question:"Manny glares. 'What is a hard truth you have had to accept about yourself?'",answers:["That I am not always easy to be around, and that is okay to admit.","That I am perfect and everyone else needs to catch up.","I haven't accepted it yet. I'll get back to you.","That I talk too much about accepting hard truths."],correct:0,time:12},
+    {question:"Manny asks: 'If a friend told you your idea was bad, what would you do?'",answers:["Immediately abandon the idea and never speak of it again.","Thank them, ask them to explain their concern, then reflect.","Defend my idea until they feel bad for doubting me.","Ask three other friends until someone finally agrees with me."],correct:1,time:11}
+  ]},
+  {name:"Beatrice the Blueberry",drawFn:2,color:"#8040c0",
+   intro:"Ah. A strawberry with wings. Interesting choice. I find that those who need wings to feel free are often the ones who have never stood still long enough to understand themselves. Shall we test that theory?",
+   questions:[
+    {question:"Beatrice studies you coldly. 'Describe a moment you were wrong about something important. Be specific.'",answers:["I once thought being busy meant being productive. I was exhausted and going nowhere.","I was wrong once. It was a Tuesday. I'd rather not relive it.","I am rarely wrong, so this is difficult to answer honestly.","I misread a train schedule and was late once. Does that count?"],correct:0,time:10},
+    {question:"Beatrice asks: 'When was the last time you changed your mind because of something someone else said?'",answers:["I'm still waiting for someone to make a compelling enough argument.","I change my mind when someone has evidence or a perspective I hadn't considered.","Last week. I now believe pigeons are misunderstood.","I don't change my mind. I evolve my position."],correct:1,time:11},
+    {question:"Beatrice narrows her eyes. 'What is the difference between confidence and arrogance?'",answers:["Confidence is knowing your worth. Arrogance is believing others have less.","Confidence is louder. Arrogance is when other people feel bad about it.","Nothing. Arrogance is just confidence that makes insecure people uncomfortable.","Confidence is earned. Arrogance is a personality type."],correct:0,time:10},
+    {question:"Beatrice asks coldly: 'What are you running from?'",answers:["The parts of myself I haven't made peace with yet.","Nothing. I am running toward things. This is different.","That question. Specifically.","A very large mango once chased me. I do not wish to discuss it."],correct:0,time:9}
+  ]},
+  {name:"Penelope the Pineapple",drawFn:3,color:"#e8a020",
+   intro:"Look at you. Wings and everything. Bold. Most fruits who come through here crumble by question two. Let's see if there is anything behind that shiny exterior, or if it is all just decoration.",
+   questions:[
+    {question:"Penelope leans in. 'You messed something up badly in front of people. Walk me through exactly what you do next.'",answers:["I acknowledge it immediately, apologize where needed, and fix what I can.","I laugh it off, change the subject fast, and never think about it again.","I replay it every night for six months while trying to sleep.","I blame the circumstances loudly until everyone moves on."],correct:0,time:10},
+    {question:"Penelope smirks. 'What is one thing you believe that most people around you do not?'",answers:["That discomfort is often where the most growth lives.","That I am always correct and the world will eventually figure this out.","That nothing really matters so why stress about anything.","That pineapple belongs everywhere, including in uncomfortable conversations."],correct:0,time:10},
+    {question:"Penelope says: 'Someone criticizes something you worked hard on. They are probably right. What do you feel and what do you do?'",answers:["I feel stung, sit with it, then decide what feedback is actually useful.","I feel nothing. I have transcended caring about what others think.","I feel personally attacked and draft a seven paragraph response.","I immediately agree and apologize for wasting everyone's time."],correct:0,time:10},
+    {question:"Penelope asks: 'Have you ever stayed in a conversation that made you uncomfortable just because you did not want to seem rude?'",answers:["Yes, and I am working on knowing when to politely excuse myself.","No. I exit every uncomfortable situation swiftly and without explanation.","Every single day. It is basically my full-time job.","I make the other person so uncomfortable they leave first. Problem solved."],correct:0,time:9},
+    {question:"Penelope's final: 'What does it mean to be truly brave?'",answers:["Doing the thing even when you feel afraid, and doing it anyway.","Never feeling fear, which is how I personally operate.","Wearing wings into a fruit conversation. Obviously.","Telling people exactly what you think with no filter whatsoever."],correct:0,time:10}
+  ]},
+  {name:"Gerald the Grape",drawFn:4,color:"#8040c0",
+   intro:"Here you are. The whole orchard whispered about you. The winged strawberry who talks to everyone. I am not impressed by the wings. I am not impressed by the reputation. What I am interested in is whether anything real is underneath. Let's find out.",
+   questions:[
+    {question:"Gerald stares without blinking. 'What is something kind someone did for you that you never properly thanked them for?'",answers:["There is someone. I have thought about it more than once. I should reach out.","I always thank people immediately, thoroughly, and in writing.","I cannot think of anything because I am very good at gratitude.","I am actively thinking about this and I will circle back."],correct:0,time:9},
+    {question:"Gerald asks: 'You realize you were completely wrong. The other person knows it too. What do you say?'",answers:["I say I was wrong, clearly, without adding any but at the end.","I say you make a valid point, which is technically not admitting anything.","I go quiet and hope the subject changes before anyone notices.","I double down. Consistency is a virtue."],correct:0,time:9},
+    {question:"Gerald says quietly: 'Name one person who made you better by being honest with you, even when it hurt.'",answers:["I have someone like that. It was hard to hear, but they were right.","No one has ever been honest with me. People love everything I do.","I prefer not to be challenged. Growth is overrated.","Anyone who was honest with me is no longer in my life, so lesson learned."],correct:0,time:9},
+    {question:"Gerald leans close: 'What is the biggest lie you tell yourself?'",answers:["That I will deal with the hard thing tomorrow. I say it every day.","I do not tell myself lies. I operate on pure honesty at all times.","That I am fine. Followed immediately by being very clearly not fine.","That my feelings are not that important and I should get over it faster."],correct:0,time:9},
+    {question:"Gerald's final question. Very slowly: 'Are you proud of who you are becoming?'",answers:["Not always, but I am trying harder than I ever have, and that matters.","Yes, fully, completely, and without any doubt whatsoever.","I will be once I figure out exactly who that is.","I was going to say yes but this question made me unsure."],correct:0,time:10}
+  ]}
+];
+
+/* ── STATE ── */
+let anxiety=0,score=100,fruitIndex=0,questionIndex=0,dialogueStep=0;
+let gamePhase='walking',timerInterval=null,timeLeft=0,maxTime=15,answered=false;
+let strawberryFrame=0,frameTimer=0,fruitVisible=false,fruitX=960;
+let gameAnimFrame=null,petalsInterval=null;
+const GROUND_Y=540-88; // 452
+let gCanvas,gCtx;
+
+/* ── GAME LOOP ── */
+function gameLoop(){
+  if(gamePhase==='gameover')return;
+  frameTimer++;if(frameTimer%7===0)strawberryFrame++;
+  gCanvas=document.getElementById('gameCanvas');gCtx=gCanvas.getContext('2d');
+  gCanvas.width=960;gCanvas.height=540;gCtx.clearRect(0,0,960,540);
+  const c=gCtx;
+  const spriteH=8*S,strawY=GROUND_Y-spriteH,strawX=100;
+  drawStrawberry(c,strawX,strawY,strawberryFrame,S);
+  if(fruitVisible&&fruitIndex<FRUITS.length){
+    const fruitDrawY=GROUND_Y-9*S;
+    drawFruitByIndex(c,FRUITS[fruitIndex].drawFn,fruitX,fruitDrawY,S,strawberryFrame);
+    if(fruitX-strawX<220&&gamePhase==='walking')startDialogue();
+  }
+  if(gamePhase==='walking'&&fruitVisible)fruitX-=1.6;
+  gameAnimFrame=requestAnimationFrame(gameLoop);
+}
+
+/* ── STAGE CANVAS ── */
+let stageFrame=0,stageAnimId=null;
+function startStageAnim(){stageFrame=0;if(stageAnimId)clearInterval(stageAnimId);stageAnimId=setInterval(()=>{stageFrame++;drawStageCharacters();},100);}
+function stopStageAnim(){if(stageAnimId){clearInterval(stageAnimId);stageAnimId=null;}}
+function drawStageCharacters(){
+  const sc=document.getElementById('stageCanvas');if(!sc)return;
+  const c=sc.getContext('2d');c.clearRect(0,0,960,220);
+  const grad=c.createLinearGradient(0,0,0,220);
+  grad.addColorStop(0,'#1e0a3c');grad.addColorStop(.6,'#4a1570');grad.addColorStop(1,'#7a2a7a');
+  c.fillStyle=grad;c.fillRect(0,0,960,220);
+  c.fillStyle='#5c2e7a';c.fillRect(0,190,960,30);c.fillStyle='#b06fcf';c.fillRect(0,190,960,3);
+  if(fruitIndex<FRUITS.length)drawFruitByIndex(c,FRUITS[fruitIndex].drawFn,80,190-9*SS,SS,stageFrame);
+  drawStrawberry(c,800,190-8*SS,stageFrame,SS);
+}
+
+/* ── TREES CANVAS ── */
+function initTreesCanvas(){
+  const tc=document.getElementById('treesCanvas');
+  tc.width=3840;tc.height=452;
+  const c=tc.getContext('2d');c.clearRect(0,0,3840,452);
+  // Dense placement: one tree every ~130px across 4 screens
+  const trees=[];
+  for(let screen=0;screen<4;screen++)
+    for(let i=0;i<8;i++)
+      trees.push({x:screen*960+i*120+(i%2===0?0:20),t:i%2});
+  for(const p of trees)drawTree(c,p.x,452,p.t);
+}
+
+function initTitleCanvas(){
+  const c2=document.getElementById('titleCanvas').getContext('2d');
+  const g=c2.createLinearGradient(0,0,0,540);
+  g.addColorStop(0,'#1e0a3c');g.addColorStop(.3,'#4a1570');g.addColorStop(.55,'#8b3a8b');g.addColorStop(.75,'#e07840');g.addColorStop(1,'#f5c518');
+  c2.fillStyle=g;c2.fillRect(0,0,960,540);
+  // Trees on title screen
+  for(let i=0;i<9;i++)drawTree(c2,i*110+(i%2===0?0:15),452,i%2);
+  // Strawberry centre-right
+  drawStrawberry(c2,430,452-8*S,2,S);
+}
+
+/* ── PETALS ── */
+function spawnPetals(){
+  const bg=document.getElementById('bgLayer');
+  petalsInterval=setInterval(()=>{
+    const p=document.createElement('div');p.className='petal';
+    p.style.left=Math.random()*960+'px';p.style.top='-10px';
+    p.style.animationDuration=(3+Math.random()*4)+'s';p.style.animationDelay=(Math.random()*2)+'s';
+    p.style.background=['#ffb3d9','#ffd1ec','#ff9ec7','#ffe0f0'][Math.floor(Math.random()*4)];
+    bg.appendChild(p);setTimeout(()=>p.remove(),8000);
+  },280);
+}
+
+/* ── SCREENS ── */
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function startGame(){
+  showScreen('gameScreen');initTreesCanvas();spawnPetals();
+  anxiety=0;score=100;fruitIndex=0;questionIndex=0;gamePhase='walking';fruitVisible=false;
+  updateHUD();requestAnimationFrame(gameLoop);setTimeout(()=>spawnNextFruit(),1800);
+}
+function spawnNextFruit(){
+  if(fruitIndex>=FRUITS.length){endGame();return;}
+  fruitVisible=true;fruitX=1050;gamePhase='walking';
+  document.getElementById('dialogueBox').style.display='none';
+  document.getElementById('questionPanel').style.display='none';
+}
+
+/* ── DIALOGUE ── */
+let dialogueLines=[],dialogueFruitName='';
+function startDialogue(){
+  if(gamePhase!=='walking')return;
+  gamePhase='dialogue';fruitVisible=false;
+  const fruit=FRUITS[fruitIndex];dialogueFruitName=fruit.name;
+  dialogueLines=[fruit.intro,"Alright. Time for the questions."];dialogueStep=0;showDialogue();
+}
+function showDialogue(){
+  document.getElementById('dialogueBox').style.display='block';
+  document.getElementById('dialogueSpeaker').textContent=dialogueFruitName;
+  document.getElementById('dialogueText').textContent=dialogueLines[dialogueStep];
+}
+function advanceDialogue(){
+  dialogueStep++;
+  if(dialogueStep>=dialogueLines.length){document.getElementById('dialogueBox').style.display='none';questionIndex=0;showQuestion();}
+  else showDialogue();
+}
+
+/* ── QUESTIONS ── */
+function showQuestion(){
+  const fruit=FRUITS[fruitIndex];
+  if(questionIndex>=fruit.questions.length){
+    fruitIndex++;document.getElementById('fruitCounter').textContent=fruitIndex;stopStageAnim();
+    document.getElementById('questionPanel').style.display='none';
+    if(fruitIndex>=FRUITS.length)setTimeout(endGame,1000);
+    else{gamePhase='walking';setTimeout(spawnNextFruit,2000);}
+    return;
+  }
+  const q=fruit.questions[questionIndex];answered=false;
+  document.getElementById('questionPanel').style.display='flex';
+  document.getElementById('strawberryBubble').style.display='none';
+  document.getElementById('fruitBubble').textContent=q.question.replace(/^[^']*'/,'').replace(/'\.?$/,'');
+  startStageAnim();
+  const grid=document.getElementById('answersGrid');grid.innerHTML='';
+  q.answers.forEach((ans,i)=>{
+    const btn=document.createElement('button');btn.className='answer-btn';
+    btn.textContent=['A','B','C','D'][i]+') '+ans;
+    btn.onclick=()=>handleAnswer(i,q.correct,btn,ans);grid.appendChild(btn);
+  });
+  document.getElementById('anxietyWarning').style.display='none';
+  maxTime=q.time;timeLeft=maxTime;updateTimer();
+  if(timerInterval)clearInterval(timerInterval);
+  let tick=0;
+  timerInterval=setInterval(()=>{
+    timeLeft-=.1;tick++;updateTimer();
+    const rate=.08+(fruitIndex*.025);
+    if(timeLeft>0){
+      anxiety=Math.min(100,anxiety+rate);updateHUD();
+      if(tick%8===0){document.getElementById('anxietyWarning').style.display='block';setTimeout(()=>document.getElementById('anxietyWarning').style.display='none',400);}
+    }
+    if(timeLeft<=0){clearInterval(timerInterval);timeExpired(q.correct);}
+  },100);
+}
+function updateTimer(){
+  document.getElementById('timerFill').style.width=Math.max(0,(timeLeft/maxTime)*100)+'%';
+  document.getElementById('timerSeconds').textContent=Math.ceil(timeLeft)+'s';
+}
+function handleAnswer(idx,correct,btn,answerText){
+  if(answered)return;answered=true;clearInterval(timerInterval);
+  document.getElementById('strawberryBubble').textContent=answerText;
+  document.getElementById('strawberryBubble').style.display='block';
+  document.querySelectorAll('.answer-btn')[correct].classList.add('correct');
+  if(idx===correct){btn.classList.add('correct');anxiety=Math.max(0,anxiety*.55);updateHUD();setTimeout(()=>{questionIndex++;showQuestion();},1400);}
+  else{btn.classList.add('wrong');anxiety=Math.min(100,anxiety+(20+fruitIndex*5));updateHUD();setTimeout(()=>{questionIndex++;showQuestion();},1600);}
+}
+function timeExpired(correct){
+  if(answered)return;answered=true;
+  const b=document.querySelectorAll('.answer-btn');if(b[correct])b[correct].classList.add('correct');
+  document.getElementById('strawberryBubble').textContent='...';
+  document.getElementById('strawberryBubble').style.display='block';
+  anxiety=Math.min(100,anxiety+(25+fruitIndex*6));updateHUD();
+  setTimeout(()=>{questionIndex++;showQuestion();},1600);
+}
+function updateHUD(){
+  document.getElementById('anxietyFill').style.width=anxiety+'%';
+  score=Math.max(0,Math.round(100-anxiety));
+  document.getElementById('scoreDisplay').textContent=score;
+}
+
+/* ── END GAME ── */
+function endGame(){
+  clearInterval(timerInterval);clearInterval(petalsInterval);stopStageAnim();cancelAnimationFrame(gameAnimFrame);
+  gamePhase='gameover';score=Math.max(0,Math.round(100-anxiety));
+  let grade,msg;
+  if(score>=90){grade='S RANK - THE SOCIAL BUTTERFLY';msg='Absolutely unshakeable. Every fruit walked away genuinely impressed. Gerald almost smiled. ALMOST.';}
+  else if(score>=75){grade='A RANK - CONFIDENT BERRY';msg='You held it together when it mattered. A few nerves, but you pushed through every question with grace.';}
+  else if(score>=55){grade='B RANK - HOLDING IT TOGETHER';msg='Gerald got to you a little. Beatrice definitely got to you. But you finished. That counts for a lot.';}
+  else if(score>=35){grade='C RANK - ANXIOUS BUT ALIVE';msg='It was rough. The questions hit hard. But you answered every single one. That is not nothing.';}
+  else{grade='D RANK - BERRY OVERWHELMED';msg='You showed up. You talked to five different fruits. Most berries never make it past Manny. Try again.';}
+  showScreen('endScreen');
+  document.getElementById('finalScore').textContent=score;
+  document.getElementById('finalGrade').textContent=grade;
+  document.getElementById('finalMsg').textContent=msg;
+  const ec=document.getElementById('endCanvas').getContext('2d');
+  for(let i=0;i<80;i++){ec.fillStyle=`hsl(${Math.random()*60+280},80%,${60+Math.random()*20}%)`;ec.beginPath();ec.arc(Math.random()*960,Math.random()*540,Math.random()*5+1,0,Math.PI*2);ec.fill();}
+}
+</script>
+</body>
+</html>
