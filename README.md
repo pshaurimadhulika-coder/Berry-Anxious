@@ -33,7 +33,7 @@ The final score determines your ending rank.
 
 ---
 
-## ✨ Features
+## Features
 
 * Custom pixel-art character system
 * Animated intro built with Three.js
@@ -45,7 +45,7 @@ The final score determines your ending rank.
 
 ---
 
-## 🛠 Built With
+## Built With
 
 * HTML
 * CSS
@@ -56,7 +56,7 @@ No frameworks or external game engines were used.
 
 ---
 
-## 🚀 Running the Game
+## Running the Game
 
 1. Clone the repository
 2. Open `index.html` in your browser
@@ -75,7 +75,7 @@ http://localhost:8000
 
 ---
 
-## 💡 Inspiration
+## Inspiration
 
 This project was inspired by:
 
@@ -87,12 +87,12 @@ This project was inspired by:
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 (Add screenshots or gameplay GIFs here)
 
 ---
 
-## 📌 Notes
+## Notes
 
-This game was created as a creative web project experimenting with storytelling, animation, and interactive dialogue systems in pure JavaScript.
+This game was created as a creative web project experimenting with storytelling, animation, and interactive dialogue systems, and made with the help of Claude.
